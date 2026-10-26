@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    CalculadoraScreen(
+                    AforoScreen(
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize(),
