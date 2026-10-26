@@ -46,15 +46,15 @@ fun BotonCalculadora(
     modifier: Modifier = Modifier,
     backgroundColor: Color = Color.White,
     textColor: Color = Color.Black,
-    onClick: () -> Unit // Acción que se ejecutará al presionar
+    onClick: () -> Unit
 ) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
             .height(70.dp)
-            .clip(RoundedCornerShape(12.dp)) // Recorta el efecto visual de "toque" (ripple)
+            .clip(RoundedCornerShape(12.dp))
             .background(backgroundColor)
-            .clickable { onClick() } // Hace que el Box funcione como botón
+            .clickable { onClick() }
             .border(
                 width = 2.dp,
                 color = Color.Gray,
@@ -63,7 +63,7 @@ fun BotonCalculadora(
     ) {
         Text(
             text = symbol,
-            fontSize = 28.sp, // Texto más grande, ideal para calculadoras
+            fontSize = 28.sp,
             fontWeight = FontWeight.Medium,
             color = textColor
         )
