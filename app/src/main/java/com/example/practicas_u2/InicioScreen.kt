@@ -6,159 +6,194 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
 
-// 1. Enum Class con propiedades
-enum class Interlineado(val factor: Float) {
-    COMPACTO(1.0f),
-    NORMAL(1.3f),
-    AMPLIO(1.6f)
+fun validarNombre(nombre: String): String? =
+    if (nombre.length >= 3 ) null else "El nombre debe tener al menos 3 caracteres"
+
+fun validarCorreo(correo:String): String? =
+    if(correo.contains("@") && correo.contains(".")) null else "Ingrese un correo valido"
+
+fun validarEdad(edadTexto: String): String ? {
+    val edad = edadTexto.toIntOrNull()
+    return if (edad != null && edad in 12..99) null else "La edad debe ser entre 12 y 99"
 }
-
-// 2. Pantalla Padre (Dueña del estado)
 @Composable
-fun LecturaScreen(modifier: Modifier = Modifier) {
-    // El estado se eleva (State Hoisting) a este nivel
-    var tamano by remember { mutableFloatStateOf(18f) }
-    var interlineado by remember { mutableStateOf(Interlineado.NORMAL) }
-    var modoOscuro by remember { mutableStateOf(false) }
-    var usaSerif by remember { mutableStateOf(false) }
+fun InscripcionScreen(modifier: Modifier = Modifier) {
+    // Estados principales
+    var nombre by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
+    var edad by remember { mutableStateOf("") }
+    var taller by remember { mutableStateOf("Fotografía") }
+    var aceptaAviso by remember { mutableStateOf(false) }
 
-    Column(modifier = modifier.padding(16.dp)) {
-        Text("Ajustes de lectura", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+    var intentoEnviar by remember { mutableStateOf(false) }
+    var inscrito by remember { mutableStateOf(false) } // define qué pantalla mostrar
 
-        // 3. Controles (recibe valores y eventos)
-        ControlesLectura(
-            tamano = tamano,
-            onTamanoChange = { tamano = it },
-            interlineado = interlineado,
-            onInterlineadoChange = { interlineado = it },
-            modoOscuro = modoOscuro,
-            onModoOscuroChange = { modoOscuro = it },
-            usaSerif = usaSerif,
-            onUsaSerifChange = { usaSerif = it }
-        )
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // 4. Vista Previa (Solo lee los valores)
-        VistaPrevia(
-            texto = "Era una noche tranquila en el pueblo cuando las campanas comenzaron a sonar, y nadie supo por qué.",
-            tamano = tamano,
-            interlineado = interlineado,
-            modoOscuro = modoOscuro,
-            usaSerif = usaSerif
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 5. Botón Restablecer
-        OutlinedButton(
-            onClick = {
-                tamano = 18f
-                interlineado = Interlineado.NORMAL
-                modoOscuro = false
-                usaSerif = false
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Restablecer")
+    Box(modifier = modifier) {
+        // Lógica de "Navegación" basada en estado
+        if (inscrito) {
+            ConfirmacionScreen(
+                nombre = nombre,
+                correo = correo,
+                taller = taller,
+                onNueva = {
+                    // Restablecer el estado a los valores por defecto
+                    nombre = ""
+                    correo = ""
+                    edad = ""
+                    taller = "Fotografía"
+                    aceptaAviso = false
+                    intentoEnviar = false
+                    inscrito = false
+                }
+            )
+        } else {
+            InscripcionForm(
+                nombre = nombre, onNombreChange = { nombre = it },
+                correo = correo, onCorreoChange = { correo = it },
+                edad = edad, onEdadChange = { edad = it },
+                taller = taller, onTallerChange = { taller = it },
+                aceptaAviso = aceptaAviso, onAvisoChange = { aceptaAviso = it },
+                intentoEnviar = intentoEnviar,
+                onInscribir = {
+                    intentoEnviar = true
+                    // Solo inscribe si todas las validaciones retornan null (sin error) y acepta el aviso
+                    if (validarNombre(nombre) == null &&
+                        validarCorreo(correo) == null &&
+                        validarEdad(edad) == null &&
+                        aceptaAviso
+                    ) {
+                        inscrito = true
+                    }
+                }
+            )
         }
     }
 }
 
-// --- Composables "Stateless" (Sin estado propio) ---
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ControlesLectura(
-    tamano: Float, onTamanoChange: (Float) -> Unit,
-    interlineado: Interlineado, onInterlineadoChange: (Interlineado) -> Unit,
-    modoOscuro: Boolean, onModoOscuroChange: (Boolean) -> Unit,
-    usaSerif: Boolean, onUsaSerifChange: (Boolean) -> Unit
-) {
-    Column {
-        // Slider de tamaño
-        Text("Tamaño de letra: ${tamano.toInt()} sp", color = MaterialTheme.colorScheme.primary)
-        Slider(
-            value = tamano,
-            onValueChange = onTamanoChange, // El evento sube al padre
-            valueRange = 14f..32f
+fun InscripcionForm(
+    nombre: String, onNombreChange: (String) -> Unit,
+    correo: String, onCorreoChange: (String) -> Unit,
+    edad: String, onEdadChange: (String) -> Unit,
+    taller: String, onTallerChange: (String) -> Unit,
+    aceptaAviso: Boolean, onAvisoChange: (Boolean) -> Unit,
+    intentoEnviar: Boolean,
+    onInscribir: ()-> Unit
+    ){
+    val errorNombre = if(intentoEnviar) validarNombre(nombre) else null
+    val errorCorreo = if(intentoEnviar) validarCorreo(correo) else null
+    val errorEdad = if(intentoEnviar) validarEdad(edad) else null
+
+    Column(modifier = Modifier.padding(16.dp).fillMaxWidth()){
+        Text("Inscripcion a talleres")
+        Text("Casa del lago - Cupo limitado")
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = nombre,
+            onValueChange = onNombreChange,
+            label = { Text("Nombre completo")},
+            isError = errorNombre != null,
+            supportingText = {errorNombre?.let {Text(it)}},
+            modifier = Modifier.fillMaxWidth()
         )
 
-        // RadioButtons de interlineado
-        Text("Interlineado")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Interlineado.entries.forEach { opcion ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = (interlineado == opcion),
-                        onClick = { onInterlineadoChange(opcion) }
+        OutlinedTextField(
+            value = correo,
+            onValueChange = onCorreoChange,
+            label = { Text("Correo")},
+            isError = errorCorreo != null,
+            supportingText = {errorCorreo?.let { Text(it) }},
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = edad,
+            onValueChange = onEdadChange,
+            label = { Text("Edad")},
+            isError = errorEdad != null,
+            supportingText = {errorEdad?.let { Text(it) }},
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        var expandido by remember {mutableStateOf(false)}
+        val opciones = listOf("Pintura", "Fotografia","Guitarra" )
+
+        ExposedDropdownMenuBox(
+            expanded = expandido,
+            onExpandedChange = {expandido = !expandido}
+        ) {
+            OutlinedTextField(
+                value = taller,
+                onValueChange = {},
+                readOnly = true,
+                label = {Text("Taller")},
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandido)},
+                modifier = Modifier.menuAnchor().fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expandido,
+                onDismissRequest = {expandido = false}
+            ) {
+                opciones.forEach { opcion ->
+                    DropdownMenuItem(
+                        text = {Text(opcion) },
+                        onClick = {
+                            onTallerChange(opcion)
+                            expandido = false
+                        }
                     )
-                    Text(opcion.name.lowercase().replaceFirstChar { it.uppercase() })
                 }
             }
         }
 
-        // Switch de modo oscuro
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Modo oscuro")
-            Switch(checked = modoOscuro, onCheckedChange = onModoOscuroChange)
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = aceptaAviso, onCheckedChange = onAvisoChange)
+            Text("Acepto el aviso de privacidad")
+        }
+        if (intentoEnviar && !aceptaAviso) {
+            Text("Debes aceptar el aviso para continuar", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
-        // Chips de fuente
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Fuente: ")
-            FilterChip(
-                selected = usaSerif,
-                onClick = { onUsaSerifChange(true) },
-                label = { Text("Serif") }
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            FilterChip(
-                selected = !usaSerif,
-                onClick = { onUsaSerifChange(false) },
-                label = { Text("Sans") }
-            )
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(onClick = onInscribir, modifier = Modifier.fillMaxWidth()) {
+            Text("Inscribirme")
         }
     }
 }
 
 @Composable
-fun VistaPrevia(
-    texto: String, tamano: Float,
-    interlineado: Interlineado, modoOscuro: Boolean, usaSerif: Boolean
-) {
-    // Calculamos colores y fuentes derivados de los estados
-    val bgColor = if (modoOscuro) Color(0xFF1E1E1E) else Color(0xFFF5F5F5)
-    val textColor = if (modoOscuro) Color.White else Color.Black
-    val font = if (usaSerif) FontFamily.Serif else FontFamily.SansSerif
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = bgColor),
-        modifier = Modifier.fillMaxWidth()
+fun ConfirmacionScreen(nombre: String, correo: String, taller: String, onNueva: () -> Unit) {
+    Column(
+        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = texto,
-            fontSize = tamano.sp,
-            lineHeight = (tamano * interlineado.factor).sp,
-            color = textColor,
-            fontFamily = font,
-            modifier = Modifier.padding(24.dp)
-        )
+        Text("¡Inscripción exitosa!", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Nombre: $nombre")
+        Text("Correo: $correo")
+        Text("Taller: $taller")
+        Spacer(modifier = Modifier.height(24.dp))
+        Button(onClick = onNueva) {
+            Text("Nueva inscripción")
+        }
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun LecturaScreenPreview() {
-    LecturaScreen()
+    InscripcionScreen()
 }
