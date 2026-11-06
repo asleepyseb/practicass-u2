@@ -1,4 +1,4 @@
-package com.example.inicio_screen
+package com.example.practicas_u2
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,8 +19,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.example.inicio_screen.Components.MiCard
-import com.example.inicio_screen.ui.theme.Inicio_ScreenTheme
+import com.example.practicas_u2.ui.theme.Practicasu2Theme
 
 @Composable
 fun InicioScreen(modifier: Modifier = Modifier) {
@@ -71,7 +70,7 @@ fun InicioScreen(modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun InicioScreenPreview() {
-    Inicio_ScreenTheme {
+    Practicasu2Theme {
         InicioScreen()
     }
 }

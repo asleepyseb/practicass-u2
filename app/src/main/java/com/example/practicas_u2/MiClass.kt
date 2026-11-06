@@ -1,4 +1,4 @@
-package com.example.inicio_screen.Components
+package com.example.practicas_u2
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
