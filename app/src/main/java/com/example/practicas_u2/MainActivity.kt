@@ -18,6 +18,8 @@ class MainActivity : ComponentActivity() {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     SumaScreen(
+
+                    QuizScreen(
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize()
