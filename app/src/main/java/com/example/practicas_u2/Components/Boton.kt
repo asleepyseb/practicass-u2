@@ -6,10 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun Boton(
+fun Boton_Suma(
+    text: String,
     modifier: Modifier = Modifier,
-    text: String = "Mi Botón",
-    onClick: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     Button(
         onClick = onClick,
