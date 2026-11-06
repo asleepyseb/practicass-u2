@@ -4,10 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.practicas_u2.Components.Boton
 import com.example.practicas_u2.ui.theme.Practicasu2Theme
 
 class MainActivity : ComponentActivity() {
@@ -17,27 +20,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-                    CarritoScreen(
+                    Box(
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize(),
-                    )
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Boton(
+                            text = "Mi Botón",
+                            onClick = { /* Acción al presionar */ }
+                        )
+                    }
                 }
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
