@@ -2,228 +2,196 @@ package com.example.practicas_u2
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
-// 1. Estados de pantalla posibles
-enum class LoginEstado { INACTIVO, ERROR, BLOQUEADO, EXITO }
-
-// 2. Pantalla Principal (El Controlador Central)
+// 1. Pantalla Padre (Dueña del estado centralizado)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun LoginScreen(modifier : Modifier = Modifier) {
-    // Estos estados DEBEN estar aquí porque dictan la lógica de negocio y navegación
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var recordarme by remember { mutableStateOf(false) }
+fun ResenaScreen(modifier : Modifier = Modifier) {
+    // Estados locales
+    var comida by remember { mutableStateOf(0) }
+    var servicio by remember { mutableStateOf(0) }
+    var ambiente by remember { mutableStateOf(0) }
+    var comentario by remember { mutableStateOf("") }
 
-    var intentosFallidos by remember { mutableStateOf(0) }
-    var estado by remember { mutableStateOf(LoginEstado.INACTIVO) }
+    // Estado con Set (inmutable, se reemplaza por completo)
+    var etiquetas by remember { mutableStateOf(setOf<String>()) }
+    var publicada by remember { mutableStateOf(false) }
 
-    // Flujo de navegación simulada
-    when (estado) {
-        LoginEstado.EXITO -> {
-            HomeScreen(
-                email = email,
-                onLogout = {
-                    email = ""
-                    password = ""
-                    recordarme = false
-                    intentosFallidos = 0
-                    estado = LoginEstado.INACTIVO
+    // Valores derivados (se calculan automáticamente en cada recomposición)
+    val todasCalificadas = comida > 0 && servicio > 0 && ambiente > 0
+    val general = if (todasCalificadas) (comida + servicio + ambiente) / 3.0 else 0.0
+    val puedePublicar = todasCalificadas && comentario.length >= 20
+
+    val opcionesEtiquetas = listOf("Familiar", "Romántico", "Económico", "Vegetariano", "Rápido")
+
+    if (publicada) {
+        ResumenResena(general = general, comentario = comentario, etiquetas = etiquetas)
+    } else {
+        Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+            Text("Escribe tu reseña", style = MaterialTheme.typography.headlineMedium)
+            Text("Restaurante El Mezquite", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+            Text("Califica tu experiencia", color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Reutilización del mismo componente 3 veces
+            Text("Comida", style = MaterialTheme.typography.bodyMedium)
+            RatingBar(rating = comida, onRatingChange = { comida = it })
+
+            Text("Servicio", style = MaterialTheme.typography.bodyMedium)
+            RatingBar(rating = servicio, onRatingChange = { servicio = it })
+
+            Text("Ambiente", style = MaterialTheme.typography.bodyMedium)
+            RatingBar(rating = ambiente, onRatingChange = { ambiente = it })
+
+            if (todasCalificadas) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Calificación general")
+                    Text(
+                        text = "%.1f".format(general),
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge
+                    )
                 }
-            )
-        }
-        else -> {
-            // Generación de mensajes dinámicos
-            val mensajeError = when (estado) {
-                LoginEstado.ERROR -> "Correo o contraseña incorrectos (intento $intentosFallidos de 3)"
-                LoginEstado.BLOQUEADO -> "Cuenta bloqueada por múltiples intentos. Intenta más tarde."
-                else -> null
             }
 
-            val bloqueado = estado == LoginEstado.BLOQUEADO
+            Spacer(modifier = Modifier.height(16.dp))
 
-            LoginForm(
-                email = email,
-                onEmailChange = { email = it; if (estado == LoginEstado.ERROR) estado = LoginEstado.INACTIVO },
-                password = password,
-                onPasswordChange = { password = it; if (estado == LoginEstado.ERROR) estado = LoginEstado.INACTIVO },
-                recordarme = recordarme,
-                onRecordarmeChange = { recordarme = it },
-                mensajeError = mensajeError,
-                bloqueado = bloqueado,
-                onLogin = {
-                    if (email == "paciente@vida.mx" && password == "Vida2025") {
-                        estado = LoginEstado.EXITO
-                        intentosFallidos = 0 // Reinicio de seguridad
-                    } else {
-                        intentosFallidos++
-                        if (intentosFallidos >= 3) {
-                            estado = LoginEstado.BLOQUEADO
-                        } else {
-                            estado = LoginEstado.ERROR
-                        }
-                    }
-                }
-            )
-        }
-    }
-}
+            ComentarioField(texto = comentario, onChange = { comentario = it })
 
-// 3. Componente LoginForm (Stateless en lógica de negocio, pero con estado de UI encapsulado)
-@Composable
-fun LoginForm(
-    email: String, onEmailChange: (String) -> Unit,
-    password: String, onPasswordChange: (String) -> Unit,
-    recordarme: Boolean, onRecordarmeChange: (Boolean) -> Unit,
-    mensajeError: String?, bloqueado: Boolean, onLogin: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        // Encabezado
-        Surface(
-            shape = MaterialTheme.shapes.extraLarge,
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(80.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Text("+", fontSize = 48.sp, color = MaterialTheme.colorScheme.primary)
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("Clínica Vida", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
-        Text("Consulta tus citas médicas", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Campos de texto
-        OutlinedTextField(
-            value = email,
-            onValueChange = onEmailChange,
-            label = { Text("Correo") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !bloqueado
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Uso del composable extra que maneja su propio estado
-        PasswordField(
-            value = password,
-            onValueChange = onPasswordChange,
-            enabled = !bloqueado
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(checked = recordarme, onCheckedChange = onRecordarmeChange, enabled = !bloqueado)
-            Text("Recordarme")
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Mensaje de error/bloqueo
-        if (mensajeError != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                shape = MaterialTheme.shapes.small,
+            // Chips de etiquetas con selección múltiple
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = mensajeError,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp)
-                )
+                opcionesEtiquetas.forEach { etiqueta ->
+                    FilterChip(
+                        selected = etiquetas.contains(etiqueta),
+                        onClick = {
+                            etiquetas = if (etiquetas.contains(etiqueta)) {
+                                etiquetas - etiqueta // Remueve creando un nuevo Set
+                            } else {
+                                etiquetas + etiqueta // Agrega creando un nuevo Set
+                            }
+                        },
+                        label = { Text(etiqueta) }
+                    )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.weight(1f))
 
-        Button(
-            onClick = onLogin,
-            modifier = Modifier.fillMaxWidth(),
-            enabled = !bloqueado && email.isNotBlank() && password.isNotBlank()
-        ) {
-            Text("Entrar")
-        }
-
-        TextButton(onClick = { /* Acción de recuperación */ }, modifier = Modifier.padding(top = 16.dp)) {
-            Text("¿Olvidaste tu contraseña?")
+            Button(
+                onClick = { publicada = true },
+                enabled = puedePublicar,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Publicar")
+            }
         }
     }
 }
 
-// Reto Extra: Composable PasswordField que gestiona su propio estado
+// --- Composables "Stateless" ---
+
 @Composable
-fun PasswordField(value: String, onValueChange: (String) -> Unit, enabled: Boolean = true) {
-    /*
-       ¿Por qué NO hoistear mostrarPassword?
-       Porque a la pantalla padre (LoginScreen) NO le importa si la contraseña
-       se está dibujando con asteriscos o con letras normales. La lógica de negocio
-       (el intento de login) funciona igual. Es un detalle puramente visual y temporal.
-    */
-    var mostrarPassword by remember { mutableStateOf(false) }
+fun RatingBar(rating: Int, onRatingChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val descripciones = listOf("Malo", "Regular", "Bueno", "Muy bueno", "Excelente")
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row {
+            for (i in 1..5) {
+                IconButton(onClick = {
+                    // Reto extra: si toca la misma estrella, se desmarca poniéndola en 0
+                    if (rating == i) onRatingChange(0) else onRatingChange(i)
+                }) {
+                    Icon(
+                        imageVector = if (i <= rating) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = "Estrella $i",
+                        tint = if (i <= rating) Color(0xFFFFB300) else Color.Gray
+                    )
+                }
+            }
+        }
+        if (rating > 0) {
+            Text(
+                text = descripciones[rating - 1],
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+@Composable
+fun ComentarioField(texto: String, onChange: (String) -> Unit, maximo: Int = 200) {
+    val isError = texto.isNotEmpty() && texto.length < 20
+    val isLimitReached = texto.length >= 180
 
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text("Contraseña") },
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-        visualTransformation = if (mostrarPassword) VisualTransformation.None else PasswordVisualTransformation(),
-        enabled = enabled,
+        value = texto,
+        onValueChange = { if (it.length <= maximo) onChange(it) }, // Límite estricto de caracteres
+        label = { Text("Comentario") },
         modifier = Modifier.fillMaxWidth(),
-        trailingIcon = {
-            val icon = if (mostrarPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-            val description = if (mostrarPassword) "Ocultar contraseña" else "Mostrar contraseña"
-
-            IconButton(onClick = { mostrarPassword = !mostrarPassword }) {
-                Icon(imageVector = icon, contentDescription = description)
+        isError = isError,
+        minLines = 3,
+        supportingText = {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                if (isError) {
+                    Text("Mínimo 20 caracteres")
+                } else {
+                    Spacer(modifier = Modifier.width(1.dp)) // Espaciador para mantener el contador a la derecha
+                }
+                Text(
+                    text = "${texto.length}/$maximo",
+                    color = if (isLimitReached) MaterialTheme.colorScheme.error else Color.Unspecified
+                )
             }
         }
     )
 }
 
-// 4. Pantalla Secundaria (Simulada)
 @Composable
-fun HomeScreen(email: String, onLogout: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text("¡Bienvenido!", style = MaterialTheme.typography.headlineMedium)
-        Text(email)
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(onClick = onLogout) {
-            Text("Cerrar sesión")
+fun ResumenResena(general: Double, comentario: String, etiquetas: Set<String>) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("¡Reseña Publicada!", style = MaterialTheme.typography.headlineSmall)
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Calificación general: %.1f".format(general), fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(comentario)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (etiquetas.isNotEmpty()) {
+                Text("Etiquetas seleccionadas:", style = MaterialTheme.typography.labelMedium)
+                Text(etiquetas.joinToString(" • "), style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }
-
 @Preview(showBackground = true)
 @Composable
 fun LecturaScreenPreview() {
-    LoginScreen()
+    ResenaScreen()
 }
