@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun Boton(
+fun Boton_Suma(
     text: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
