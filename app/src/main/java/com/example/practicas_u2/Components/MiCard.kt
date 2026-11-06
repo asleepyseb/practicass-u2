@@ -26,6 +26,13 @@ fun MiCard(
             .height(70.dp)
             .border(
                 width = 2.dp,
+                color = Color.Gray,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            ),
                 color = Color.Blue,
                 shape = RoundedCornerShape(12.dp)
             )

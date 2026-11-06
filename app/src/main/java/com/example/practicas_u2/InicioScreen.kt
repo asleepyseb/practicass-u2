@@ -22,6 +22,9 @@ import com.example.practicas_u2.Components.Boton_Suma
 import com.example.practicas_u2.ui.theme.Practicasu2Theme
 
 @Composable
+fun SiglasScreen(modifier: Modifier = Modifier) {
+    var cant by remember { mutableStateOf("") }
+    var repeticiones by remember { mutableIntStateOf(0) }
 fun SumaScreen(modifier: Modifier = Modifier) {
     var val1 by remember { mutableStateOf("") }
     var val2 by remember { mutableStateOf("") }
@@ -31,6 +34,14 @@ fun SumaScreen(modifier: Modifier = Modifier) {
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = "Ingrese la cantidad de N")
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(value = cant, onValueChange = { cant = it })
+        Spacer(modifier = Modifier.height(16.dp))
+        Boton(text = "Imprimir", onClick = { repeticiones = cant.toIntOrNull() ?: 0 })
+        for (i in 1..repeticiones) {
+            Text(text = "N de Niño")
     ) {
         TextField(
             value = val1,
