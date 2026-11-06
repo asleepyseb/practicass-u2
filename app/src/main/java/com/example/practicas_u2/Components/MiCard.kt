@@ -26,7 +26,7 @@ fun MiCard(
             .height(70.dp)
             .border(
                 width = 2.dp,
-                color = Color.Gray,
+                color = Color.Blue,
                 shape = RoundedCornerShape(12.dp)
             )
             .background(
@@ -44,3 +44,4 @@ fun MiCard(
 
     Spacer(modifier = Modifier.padding(5.dp))
 }
+
