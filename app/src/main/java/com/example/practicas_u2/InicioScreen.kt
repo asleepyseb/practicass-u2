@@ -1,194 +1,224 @@
 package com.example.practicas_u2
 
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
-import kotlin.math.ceil
-import  androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
 
-// 1. Pantalla Padre (Dueña del estado y la lógica)
+// 1. Modelos y Enums
+data class Tarea(val id: Int, val titulo: String, val prioridad: Prioridad, val hecha: Boolean = false)
+
+enum class Prioridad(val color: androidx.compose.ui.graphics.Color) {
+    ALTA(androidx.compose.ui.graphics.Color(0xFFE57373)),
+    MEDIA(androidx.compose.ui.graphics.Color(0xFFFFD54F)),
+    BAJA(androidx.compose.ui.graphics.Color(0xFF81C784))
+}
+
+enum class Filtro { TODAS, PENDIENTES, HECHAS }
+
+// 2. Pantalla Principal (Controladora de Estado)
 @Composable
-fun CuentaScreen(modifier: Modifier = Modifier) {
-    // Estados base
-    var montoTexto by remember { mutableStateOf("") }
-    var propinaPct by remember { mutableStateOf(20) }
-    var usaOtro by remember { mutableStateOf(false) }
-    var personas by remember { mutableStateOf(5) }
-    var redondear by remember { mutableStateOf(false) }
+fun TareasScreen(modifier : Modifier = Modifier) {
+    // Estado de la lista
+    val tareas = remember { mutableStateListOf<Tarea>() }
+    var idCounter by remember { mutableStateOf(0) }
 
-    // Cálculos derivados (No son estado guardado, se recalculan solos)
-    val monto = montoTexto.toDoubleOrNull() ?: 0.0 // Manejo seguro de nulos
-    val propinaTotal = monto * (propinaPct / 100.0)
-    val totalConPropina = monto + propinaTotal
+    // Estado del formulario de nueva tarea
+    var textoNueva by remember { mutableStateOf("") }
+    var prioridadNueva by remember { mutableStateOf(Prioridad.MEDIA) }
 
-    val porPersonaExacto = if (personas > 0) totalConPropina / personas else 0.0
-    val porPersona = if (redondear) ceil(porPersonaExacto) else porPersonaExacto
-    val sobrante = if (redondear) (porPersona * personas) - totalConPropina else 0.0
+    // Estado de filtros
+    var filtroActual by remember { mutableStateOf(Filtro.TODAS) }
 
-    Column(modifier = modifier.padding(16.dp).fillMaxSize()) {
-        Text("Cuenta dividida", style = MaterialTheme.typography.headlineMedium)
+    // Estado del diálogo
+    var mostrarDialogo by remember { mutableStateOf(false) }
+
+    // Valores derivados
+    val tareasVisibles = when (filtroActual) {
+        Filtro.TODAS -> tareas
+        Filtro.PENDIENTES -> tareas.filter { !it.hecha }
+        Filtro.HECHAS -> tareas.filter { it.hecha }
+    }
+    // Reto extra: Ordenar visibles por prioridad (Alta primero) sin alterar la lista original
+    val tareasOrdenadas = tareasVisibles.sortedBy { it.prioridad.ordinal }
+    val pendientes = tareas.count { !it.hecha }
+
+    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+        Text("Mis pendientes", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedTextField(
-            value = montoTexto,
-            onValueChange = { montoTexto = it },
-            label = { Text("Monto de la cuenta") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            leadingIcon = { Text("$", modifier = Modifier.padding(start = 8.dp)) },
-            modifier = Modifier.fillMaxWidth(),
-            isError = montoTexto.isNotEmpty() && montoTexto.toDoubleOrNull() == null
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        SelectorPropina(
-            porcentaje = propinaPct,
-            usaOtro = usaOtro,
-            onPorcentajeChange = { propinaPct = it },
-            onOtroChange = { usaOtro = it }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        StepperPersonas(
-            personas = personas,
-            onChange = { personas = it }
-        )
-
+        // Formulario de entrada
         Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Redondear por persona")
-            Switch(checked = redondear, onCheckedChange = { redondear = it })
+            OutlinedTextField(
+                value = textoNueva,
+                onValueChange = { textoNueva = it },
+                label = { Text("Nueva tarea") },
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    if (textoNueva.isNotBlank()) {
+                        tareas.add(Tarea(idCounter++, textoNueva, prioridadNueva))
+                        textoNueva = "" // Limpiar el campo
+                    }
+                },
+                enabled = textoNueva.isNotBlank(), // Validación
+                modifier = Modifier.size(56.dp),
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar")
+            }
+        }
+
+        // Selector de Prioridad para la nueva tarea
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+            Text("Prioridad")
+            Spacer(modifier = Modifier.width(8.dp))
+            Prioridad.entries.forEach { prio ->
+                FilterChip(
+                    selected = prioridadNueva == prio,
+                    onClick = { prioridadNueva = prio },
+                    label = { Text(prio.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+            }
+        }
+
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        // Filtros de vista
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Filtro.entries.forEach { f ->
+                FilterChip(
+                    selected = filtroActual == f,
+                    onClick = { filtroActual = f },
+                    label = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Lista de tareas
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            itemsIndexed(tareasOrdenadas, key = { _, tarea -> tarea.id }) { _, tarea ->
+                TareaItem(
+                    tarea = tarea,
+                    onCheckedChange = { nuevoEstado ->
+                        // Actualizar la tarea inmutable en la lista original
+                        val index = tareas.indexOfFirst { it.id == tarea.id }
+                        if (index != -1) {
+                            tareas[index] = tareas[index].copy(hecha = nuevoEstado)
+                        }
+                    },
+                    onDelete = {
+                        tareas.removeIf { it.id == tarea.id }
+                    }
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        ResultadoCuenta(
-            propinaPct = propinaPct,
-            propina = propinaTotal,
-            total = totalConPropina,
-            porPersona = porPersona,
-            personas = personas,
-            sobrante = sobrante
+        // Resumen
+        Text("${pendientes} pendientes de ${tareas.size}", style = MaterialTheme.typography.titleMedium)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Botón para borrar completadas
+        OutlinedButton(
+            onClick = { mostrarDialogo = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = tareas.any { it.hecha }
+        ) {
+            Text("Borrar completadas")
+        }
+    }
+
+    // Diálogo de confirmación
+    if (mostrarDialogo) {
+        val completadas = tareas.count { it.hecha }
+        ConfirmarBorradoDialog(
+            cantidad = completadas,
+            onConfirm = {
+                tareas.removeIf { it.hecha }
+                mostrarDialogo = false
+            },
+            onDismiss = { mostrarDialogo = false }
         )
     }
 }
 
-// --- Composables "Stateless" ---
-
-@OptIn(ExperimentalMaterial3Api::class)
+// 3. Componente TareaItem (Stateless)
 @Composable
-fun SelectorPropina(
-    porcentaje: Int, usaOtro: Boolean,
-    onPorcentajeChange: (Int) -> Unit, onOtroChange: (Boolean) -> Unit
-) {
-    Column {
-        Text("Propina")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(10, 15, 20).forEach { pct ->
-                FilterChip(
-                    selected = !usaOtro && porcentaje == pct,
-                    onClick = {
-                        onOtroChange(false)
-                        onPorcentajeChange(pct)
-                    },
-                    label = { Text("$pct %") }
-                )
-            }
-            FilterChip(
-                selected = usaOtro,
-                onClick = { onOtroChange(true) },
-                label = { Text("Otro") }
-            )
-        }
-        if (usaOtro) {
-            Slider(
-                value = porcentaje.toFloat(),
-                onValueChange = { onPorcentajeChange(it.toInt()) },
-                valueRange = 0f..30f
-            )
-            Text("Seleccionado: $porcentaje %", style = MaterialTheme.typography.bodySmall)
-        }
-    }
-}
-
-@Composable
-fun StepperPersonas(personas: Int, onChange: (Int) -> Unit) {
+fun TareaItem(tarea: Tarea, onCheckedChange: (Boolean) -> Unit, onDelete: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Personas")
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onChange((personas - 1).coerceAtLeast(1)) }) {
-                Icon(Icons.Default.Remove, contentDescription = "Menos")
-            }
-            Text("$personas", fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
-            IconButton(onClick = { onChange((personas + 1).coerceAtMost(20)) }) {
-                Icon(Icons.Default.Add, contentDescription = "Más")
-            }
-        }
-    }
-}
-
-@Composable
-fun ResultadoCuenta(
-    propinaPct: Int, propina: Double, total: Double,
-    porPersona: Double, personas: Int, sobrante: Double
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Propina ($propinaPct %)")
-                Text("$${"%.2f".format(propina)}", fontWeight = FontWeight.Bold)
-            }
-            Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("Total con propina")
-                Text("$${"%.2f".format(total)}", fontWeight = FontWeight.Bold)
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
-
-            Text("Cada quien paga")
+        Checkbox(
+            checked = tarea.hecha,
+            onCheckedChange = onCheckedChange
+        )
+        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
             Text(
-                text = "$${"%.2f".format(porPersona)}",
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
+                text = tarea.titulo,
+                textDecoration = if (tarea.hecha) TextDecoration.LineThrough else TextDecoration.None
             )
-            Text("entre $personas personas", style = MaterialTheme.typography.bodyMedium)
-
-            if (sobrante > 0) {
+            Surface(
+                color = tarea.prioridad.color.copy(alpha = 0.2f),
+                shape = MaterialTheme.shapes.small
+            ) {
                 Text(
-                    text = "Sobrante por redondeo: $${"%.2f".format(sobrante)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = tarea.prioridad.name.lowercase().replaceFirstChar { it.uppercase() },
+                    color = tarea.prioridad.color,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                 )
             }
         }
+        IconButton(onClick = onDelete) {
+            Icon(Icons.Default.Close, contentDescription = "Eliminar tarea")
+        }
     }
 }
 
-
+// 4. Componente Diálogo (Stateless)
+@Composable
+fun ConfirmarBorradoDialog(cantidad: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("¿Borrar tareas completadas?") },
+        text = { Text("Se eliminarán $cantidad tareas completadas. Esta acción no se puede deshacer.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Borrar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
 @Preview(showBackground = true)
 @Composable
 fun LecturaScreenPreview() {
-    CuentaScreen()
+    TareasScreen()
 }
