@@ -2,223 +2,228 @@ package com.example.practicas_u2
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
-// 1. Modelos y Enums
-data class Tarea(val id: Int, val titulo: String, val prioridad: Prioridad, val hecha: Boolean = false)
+// 1. Estados de pantalla posibles
+enum class LoginEstado { INACTIVO, ERROR, BLOQUEADO, EXITO }
 
-enum class Prioridad(val color: androidx.compose.ui.graphics.Color) {
-    ALTA(androidx.compose.ui.graphics.Color(0xFFE57373)),
-    MEDIA(androidx.compose.ui.graphics.Color(0xFFFFD54F)),
-    BAJA(androidx.compose.ui.graphics.Color(0xFF81C784))
+// 2. Pantalla Principal (El Controlador Central)
+@Composable
+fun LoginScreen(modifier : Modifier = Modifier) {
+    // Estos estados DEBEN estar aquí porque dictan la lógica de negocio y navegación
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var recordarme by remember { mutableStateOf(false) }
+
+    var intentosFallidos by remember { mutableStateOf(0) }
+    var estado by remember { mutableStateOf(LoginEstado.INACTIVO) }
+
+    // Flujo de navegación simulada
+    when (estado) {
+        LoginEstado.EXITO -> {
+            HomeScreen(
+                email = email,
+                onLogout = {
+                    email = ""
+                    password = ""
+                    recordarme = false
+                    intentosFallidos = 0
+                    estado = LoginEstado.INACTIVO
+                }
+            )
+        }
+        else -> {
+            // Generación de mensajes dinámicos
+            val mensajeError = when (estado) {
+                LoginEstado.ERROR -> "Correo o contraseña incorrectos (intento $intentosFallidos de 3)"
+                LoginEstado.BLOQUEADO -> "Cuenta bloqueada por múltiples intentos. Intenta más tarde."
+                else -> null
+            }
+
+            val bloqueado = estado == LoginEstado.BLOQUEADO
+
+            LoginForm(
+                email = email,
+                onEmailChange = { email = it; if (estado == LoginEstado.ERROR) estado = LoginEstado.INACTIVO },
+                password = password,
+                onPasswordChange = { password = it; if (estado == LoginEstado.ERROR) estado = LoginEstado.INACTIVO },
+                recordarme = recordarme,
+                onRecordarmeChange = { recordarme = it },
+                mensajeError = mensajeError,
+                bloqueado = bloqueado,
+                onLogin = {
+                    if (email == "paciente@vida.mx" && password == "Vida2025") {
+                        estado = LoginEstado.EXITO
+                        intentosFallidos = 0 // Reinicio de seguridad
+                    } else {
+                        intentosFallidos++
+                        if (intentosFallidos >= 3) {
+                            estado = LoginEstado.BLOQUEADO
+                        } else {
+                            estado = LoginEstado.ERROR
+                        }
+                    }
+                }
+            )
+        }
+    }
 }
 
-enum class Filtro { TODAS, PENDIENTES, HECHAS }
-
-// 2. Pantalla Principal (Controladora de Estado)
+// 3. Componente LoginForm (Stateless en lógica de negocio, pero con estado de UI encapsulado)
 @Composable
-fun TareasScreen(modifier : Modifier = Modifier) {
-    // Estado de la lista
-    val tareas = remember { mutableStateListOf<Tarea>() }
-    var idCounter by remember { mutableStateOf(0) }
+fun LoginForm(
+    email: String, onEmailChange: (String) -> Unit,
+    password: String, onPasswordChange: (String) -> Unit,
+    recordarme: Boolean, onRecordarmeChange: (Boolean) -> Unit,
+    mensajeError: String?, bloqueado: Boolean, onLogin: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        // Encabezado
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            modifier = Modifier.size(80.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text("+", fontSize = 48.sp, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Clínica Vida", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
+        Text("Consulta tus citas médicas", color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-    // Estado del formulario de nueva tarea
-    var textoNueva by remember { mutableStateOf("") }
-    var prioridadNueva by remember { mutableStateOf(Prioridad.MEDIA) }
+        Spacer(modifier = Modifier.height(32.dp))
 
-    // Estado de filtros
-    var filtroActual by remember { mutableStateOf(Filtro.TODAS) }
+        // Campos de texto
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            label = { Text("Correo") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !bloqueado
+        )
 
-    // Estado del diálogo
-    var mostrarDialogo by remember { mutableStateOf(false) }
-
-    // Valores derivados
-    val tareasVisibles = when (filtroActual) {
-        Filtro.TODAS -> tareas
-        Filtro.PENDIENTES -> tareas.filter { !it.hecha }
-        Filtro.HECHAS -> tareas.filter { it.hecha }
-    }
-    // Reto extra: Ordenar visibles por prioridad (Alta primero) sin alterar la lista original
-    val tareasOrdenadas = tareasVisibles.sortedBy { it.prioridad.ordinal }
-    val pendientes = tareas.count { !it.hecha }
-
-    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-        Text("Mis pendientes", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Formulario de entrada
+        // Uso del composable extra que maneja su propio estado
+        PasswordField(
+            value = password,
+            onValueChange = onPasswordChange,
+            enabled = !bloqueado
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedTextField(
-                value = textoNueva,
-                onValueChange = { textoNueva = it },
-                label = { Text("Nueva tarea") },
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Button(
-                onClick = {
-                    if (textoNueva.isNotBlank()) {
-                        tareas.add(Tarea(idCounter++, textoNueva, prioridadNueva))
-                        textoNueva = "" // Limpiar el campo
-                    }
-                },
-                enabled = textoNueva.isNotBlank(), // Validación
-                modifier = Modifier.size(56.dp),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Agregar")
-            }
-        }
-
-        // Selector de Prioridad para la nueva tarea
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
-            Text("Prioridad")
-            Spacer(modifier = Modifier.width(8.dp))
-            Prioridad.entries.forEach { prio ->
-                FilterChip(
-                    selected = prioridadNueva == prio,
-                    onClick = { prioridadNueva = prio },
-                    label = { Text(prio.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                    modifier = Modifier.padding(end = 4.dp)
-                )
-            }
-        }
-
-        Divider(modifier = Modifier.padding(vertical = 16.dp))
-
-        // Filtros de vista
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Filtro.entries.forEach { f ->
-                FilterChip(
-                    selected = filtroActual == f,
-                    onClick = { filtroActual = f },
-                    label = { Text(f.name.lowercase().replaceFirstChar { it.uppercase() }) }
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Lista de tareas
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            itemsIndexed(tareasOrdenadas, key = { _, tarea -> tarea.id }) { _, tarea ->
-                TareaItem(
-                    tarea = tarea,
-                    onCheckedChange = { nuevoEstado ->
-                        // Actualizar la tarea inmutable en la lista original
-                        val index = tareas.indexOfFirst { it.id == tarea.id }
-                        if (index != -1) {
-                            tareas[index] = tareas[index].copy(hecha = nuevoEstado)
-                        }
-                    },
-                    onDelete = {
-                        tareas.removeIf { it.id == tarea.id }
-                    }
-                )
-            }
+            Checkbox(checked = recordarme, onCheckedChange = onRecordarmeChange, enabled = !bloqueado)
+            Text("Recordarme")
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Resumen
-        Text("${pendientes} pendientes de ${tareas.size}", style = MaterialTheme.typography.titleMedium)
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Botón para borrar completadas
-        OutlinedButton(
-            onClick = { mostrarDialogo = true },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = tareas.any { it.hecha }
-        ) {
-            Text("Borrar completadas")
-        }
-    }
-
-    // Diálogo de confirmación
-    if (mostrarDialogo) {
-        val completadas = tareas.count { it.hecha }
-        ConfirmarBorradoDialog(
-            cantidad = completadas,
-            onConfirm = {
-                tareas.removeIf { it.hecha }
-                mostrarDialogo = false
-            },
-            onDismiss = { mostrarDialogo = false }
-        )
-    }
-}
-
-// 3. Componente TareaItem (Stateless)
-@Composable
-fun TareaItem(tarea: Tarea, onCheckedChange: (Boolean) -> Unit, onDelete: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Checkbox(
-            checked = tarea.hecha,
-            onCheckedChange = onCheckedChange
-        )
-        Column(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
-            Text(
-                text = tarea.titulo,
-                textDecoration = if (tarea.hecha) TextDecoration.LineThrough else TextDecoration.None
-            )
+        // Mensaje de error/bloqueo
+        if (mensajeError != null) {
             Surface(
-                color = tarea.prioridad.color.copy(alpha = 0.2f),
-                shape = MaterialTheme.shapes.small
+                color = MaterialTheme.colorScheme.errorContainer,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = tarea.prioridad.name.lowercase().replaceFirstChar { it.uppercase() },
-                    color = tarea.prioridad.color,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                    text = mensajeError,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    modifier = Modifier.padding(16.dp)
                 )
             }
         }
-        IconButton(onClick = onDelete) {
-            Icon(Icons.Default.Close, contentDescription = "Eliminar tarea")
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = onLogin,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !bloqueado && email.isNotBlank() && password.isNotBlank()
+        ) {
+            Text("Entrar")
+        }
+
+        TextButton(onClick = { /* Acción de recuperación */ }, modifier = Modifier.padding(top = 16.dp)) {
+            Text("¿Olvidaste tu contraseña?")
         }
     }
 }
 
-// 4. Componente Diálogo (Stateless)
+// Reto Extra: Composable PasswordField que gestiona su propio estado
 @Composable
-fun ConfirmarBorradoDialog(cantidad: Int, onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("¿Borrar tareas completadas?") },
-        text = { Text("Se eliminarán $cantidad tareas completadas. Esta acción no se puede deshacer.") },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Borrar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+fun PasswordField(value: String, onValueChange: (String) -> Unit, enabled: Boolean = true) {
+    /*
+       ¿Por qué NO hoistear mostrarPassword?
+       Porque a la pantalla padre (LoginScreen) NO le importa si la contraseña
+       se está dibujando con asteriscos o con letras normales. La lógica de negocio
+       (el intento de login) funciona igual. Es un detalle puramente visual y temporal.
+    */
+    var mostrarPassword by remember { mutableStateOf(false) }
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text("Contraseña") },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        visualTransformation = if (mostrarPassword) VisualTransformation.None else PasswordVisualTransformation(),
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth(),
+        trailingIcon = {
+            val icon = if (mostrarPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+            val description = if (mostrarPassword) "Ocultar contraseña" else "Mostrar contraseña"
+
+            IconButton(onClick = { mostrarPassword = !mostrarPassword }) {
+                Icon(imageVector = icon, contentDescription = description)
             }
         }
     )
 }
+
+// 4. Pantalla Secundaria (Simulada)
+@Composable
+fun HomeScreen(email: String, onLogout: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text("¡Bienvenido!", style = MaterialTheme.typography.headlineMedium)
+        Text(email)
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = onLogout) {
+            Text("Cerrar sesión")
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun LecturaScreenPreview() {
-    TareasScreen()
+    LoginScreen()
 }
