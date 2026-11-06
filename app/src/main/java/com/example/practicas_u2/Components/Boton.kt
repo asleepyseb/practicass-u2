@@ -7,9 +7,9 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun Boton(
+    text: String,
     modifier: Modifier = Modifier,
-    text: String = "Mi Botón",
-    onClick: () -> Unit = {}
+    onClick: () -> Unit
 ) {
     Button(
         onClick = onClick,
