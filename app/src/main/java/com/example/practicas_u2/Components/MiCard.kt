@@ -29,6 +29,13 @@ fun MiCard(
                 color = Color.Blue,
                 shape = RoundedCornerShape(12.dp)
             )
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            ),
+                color = Color.Blue,
+                shape = RoundedCornerShape(12.dp)
+            )
             .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
