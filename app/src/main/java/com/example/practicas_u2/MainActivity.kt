@@ -17,26 +17,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    InicioScreen(
+                    SumaScreen(
+
+                    QuizScreen(
                         modifier = Modifier
                             .padding(innerPadding)
-                            .fillMaxSize(),
+                            .fillMaxSize()
                     )
                 }
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
