@@ -2,196 +2,238 @@ package com.example.practicas_u2
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-// 1. Pantalla Padre (Dueña del estado centralizado)
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+// 1. Modelos de datos
+enum class Categoria { COMIDA, TRANSPORTE, RENTA, OCIO, OTROS }
+
+data class Gasto(val id: Int, val concepto: String, val monto: Double, val categoria: Categoria)
+
+// 2. Pantalla Padre (Controla el presupuesto global)
 @Composable
-fun ResenaScreen(modifier : Modifier = Modifier) {
-    // Estados locales
-    var comida by remember { mutableStateOf(0) }
-    var servicio by remember { mutableStateOf(0) }
-    var ambiente by remember { mutableStateOf(0) }
-    var comentario by remember { mutableStateOf("") }
+fun PresupuestoScreen(modifier : Modifier = Modifier) {
+    var ingresoTexto by remember { mutableStateOf("4500") }
+    val gastos = remember { mutableStateListOf<Gasto>() }
+    var idCounter by remember { mutableStateOf(0) }
 
-    // Estado con Set (inmutable, se reemplaza por completo)
-    var etiquetas by remember { mutableStateOf(setOf<String>()) }
-    var publicada by remember { mutableStateOf(false) }
+    // Cálculos derivados
+    val ingreso = ingresoTexto.toDoubleOrNull() ?: 0.0
+    val totalGastado = gastos.sumOf { it.monto }
+    val saldo = ingreso - totalGastado
+    val porcentaje = if (ingreso > 0) (totalGastado / ingreso).toFloat() else 0f
 
-    // Valores derivados (se calculan automáticamente en cada recomposición)
-    val todasCalificadas = comida > 0 && servicio > 0 && ambiente > 0
-    val general = if (todasCalificadas) (comida + servicio + ambiente) / 3.0 else 0.0
-    val puedePublicar = todasCalificadas && comentario.length >= 20
+    val gastoPorCategoria = gastos.groupBy { it.categoria }
+        .mapValues { it.value.sumOf { g -> g.monto } }
+    val categoriaTop = gastoPorCategoria.maxByOrNull { it.value }
 
-    val opcionesEtiquetas = listOf("Familiar", "Romántico", "Económico", "Vegetariano", "Rápido")
+    Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
+        Text("Mi presupuesto", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(16.dp))
 
-    if (publicada) {
-        ResumenResena(general = general, comentario = comentario, etiquetas = etiquetas)
-    } else {
-        Column(modifier = Modifier.padding(16.dp).fillMaxSize()) {
-            Text("Escribe tu reseña", style = MaterialTheme.typography.headlineMedium)
-            Text("Restaurante El Mezquite", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            Text("Califica tu experiencia", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        OutlinedTextField(
+            value = ingresoTexto,
+            onValueChange = { ingresoTexto = it },
+            label = { Text("Ingreso mensual") },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            leadingIcon = { Text("$", modifier = Modifier.padding(start = 8.dp)) },
+            modifier = Modifier.fillMaxWidth()
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Reutilización del mismo componente 3 veces
-            Text("Comida", style = MaterialTheme.typography.bodyMedium)
-            RatingBar(rating = comida, onRatingChange = { comida = it })
+        ResumenPresupuesto(
+            totalGastado = totalGastado,
+            saldo = saldo,
+            porcentaje = porcentaje,
+            categoriaTopNombre = categoriaTop?.key?.name?.lowercase()?.replaceFirstChar { it.uppercase() },
+            categoriaTopMonto = categoriaTop?.value
+        )
 
-            Text("Servicio", style = MaterialTheme.typography.bodyMedium)
-            RatingBar(rating = servicio, onRatingChange = { servicio = it })
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Nuevo gasto", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
 
-            Text("Ambiente", style = MaterialTheme.typography.bodyMedium)
-            RatingBar(rating = ambiente, onRatingChange = { ambiente = it })
-
-            if (todasCalificadas) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Calificación general")
-                    Text(
-                        text = "%.1f".format(general),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                }
+        // El formulario recibe una lambda de "alto nivel", entregando un gasto completo
+        FormularioGasto(
+            onAgregar = { concepto, monto, categoria ->
+                gastos.add(Gasto(idCounter++, concepto, monto, categoria))
             }
+        )
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Gastos recientes", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
 
-            ComentarioField(texto = comentario, onChange = { comentario = it })
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Chips de etiquetas con selección múltiple
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                opcionesEtiquetas.forEach { etiqueta ->
-                    FilterChip(
-                        selected = etiquetas.contains(etiqueta),
-                        onClick = {
-                            etiquetas = if (etiquetas.contains(etiqueta)) {
-                                etiquetas - etiqueta // Remueve creando un nuevo Set
-                            } else {
-                                etiquetas + etiqueta // Agrega creando un nuevo Set
-                            }
-                        },
-                        label = { Text(etiqueta) }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Button(
-                onClick = { publicada = true },
-                enabled = puedePublicar,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Publicar")
+        LazyColumn(modifier = Modifier.weight(1f)) {
+            items(gastos.reversed(), key = { it.id }) { gasto ->
+                GastoItem(gasto = gasto, onEliminar = { gastos.remove(gasto) })
             }
         }
     }
 }
 
-// --- Composables "Stateless" ---
+// 3. Formulario (Encapsula su propio estado de edición)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FormularioGasto(onAgregar: (String, Double, Categoria) -> Unit) {
+    // Estado local: ¡No se hoistearon porque al padre no le importan las teclas intermedias!
+    var concepto by remember { mutableStateOf("") }
+    var montoTexto by remember { mutableStateOf("") }
+    var categoria by remember { mutableStateOf(Categoria.COMIDA) }
+    var menuAbierto by remember { mutableStateOf(false) }
+
+    val monto = montoTexto.toDoubleOrNull()
+    val isValid = concepto.isNotBlank() && monto != null && monto > 0
+
+    Column {
+        OutlinedTextField(
+            value = concepto,
+            onValueChange = { concepto = it },
+            label = { Text("Concepto") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = montoTexto,
+                onValueChange = { montoTexto = it },
+                label = { Text("Monto") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                modifier = Modifier.weight(1f)
+            )
+
+            ExposedDropdownMenuBox(
+                expanded = menuAbierto,
+                onExpandedChange = { menuAbierto = !menuAbierto },
+                modifier = Modifier.weight(1f)
+            ) {
+                OutlinedTextField(
+                    value = categoria.name.lowercase().replaceFirstChar { it.uppercase() },
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Categoría") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = menuAbierto) },
+                    modifier = Modifier.menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = menuAbierto,
+                    onDismissRequest = { menuAbierto = false }
+                ) {
+                    Categoria.entries.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text(cat.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                            onClick = {
+                                categoria = cat
+                                menuAbierto = false
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                if (isValid) {
+                    onAgregar(concepto, monto!!, categoria)
+                    // Reiniciar el formulario local tras agregar
+                    concepto = ""
+                    montoTexto = ""
+                    categoria = Categoria.COMIDA
+                }
+            },
+            enabled = isValid,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Agregar gasto")
+        }
+    }
+}
+
+// 4. Componentes Stateless
+@Composable
+fun ResumenPresupuesto(
+    totalGastado: Double, saldo: Double, porcentaje: Float,
+    categoriaTopNombre: String?, categoriaTopMonto: Double?
+) {
+    val colorAlerta = when {
+        porcentaje >= 1f -> Color(0xFFFFCDD2) // Rojo
+        porcentaje >= 0.8f -> Color(0xFFFFF9C4) // Amarillo
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = colorAlerta)) {
+        Column(modifier = Modifier.padding(16.dp).fillMaxWidth()) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text("Gastado", style = MaterialTheme.typography.labelMedium)
+                    Text("$${"%.2f".format(totalGastado)}", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Saldo", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        text = "$${"%.2f".format(saldo)}",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (saldo < 0) Color.Red else Color(0xFF388E3C)
+                    )
+                }
+            }
+
+            LinearProgressIndicator(
+                progress = { porcentaje.coerceAtMost(1f) },
+                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                color = if (porcentaje >= 1f) Color.Red else if (porcentaje >= 0.8f) Color(0xFFFBC02D) else MaterialTheme.colorScheme.primary
+            )
+
+            val infoExtra = if (categoriaTopNombre != null) {
+                "${(porcentaje * 100).toInt()}% usado · Mayor gasto: $categoriaTopNombre ($${"%.2f".format(categoriaTopMonto)})"
+            } else {
+                "Sin gastos registrados"
+            }
+            Text(infoExtra, style = MaterialTheme.typography.bodySmall)
+
+            if (porcentaje >= 0.8f) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val mensaje = if (porcentaje >= 1f) "Te has excedido del presupuesto" else "Cuidado: pasaste el 80 %"
+                Text("⚠️ $mensaje", color = if (porcentaje >= 1f) Color.Red else Color(0xFFF57F17), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
 
 @Composable
-fun RatingBar(rating: Int, onRatingChange: (Int) -> Unit, modifier: Modifier = Modifier) {
-    val descripciones = listOf("Malo", "Regular", "Bueno", "Muy bueno", "Excelente")
-
+fun GastoItem(gasto: Gasto, onEliminar: () -> Unit) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row {
-            for (i in 1..5) {
-                IconButton(onClick = {
-                    // Reto extra: si toca la misma estrella, se desmarca poniéndola en 0
-                    if (rating == i) onRatingChange(0) else onRatingChange(i)
-                }) {
-                    Icon(
-                        imageVector = if (i <= rating) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = "Estrella $i",
-                        tint = if (i <= rating) Color(0xFFFFB300) else Color.Gray
-                    )
-                }
-            }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(gasto.concepto, fontWeight = FontWeight.Bold)
+            Text(gasto.categoria.name.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall)
         }
-        if (rating > 0) {
-            Text(
-                text = descripciones[rating - 1],
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold
-            )
+        Text("-$${"%.2f".format(gasto.monto)}", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+        IconButton(onClick = onEliminar) {
+            Icon(Icons.Default.Close, contentDescription = "Eliminar gasto")
         }
     }
 }
 
-@Composable
-fun ComentarioField(texto: String, onChange: (String) -> Unit, maximo: Int = 200) {
-    val isError = texto.isNotEmpty() && texto.length < 20
-    val isLimitReached = texto.length >= 180
-
-    OutlinedTextField(
-        value = texto,
-        onValueChange = { if (it.length <= maximo) onChange(it) }, // Límite estricto de caracteres
-        label = { Text("Comentario") },
-        modifier = Modifier.fillMaxWidth(),
-        isError = isError,
-        minLines = 3,
-        supportingText = {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                if (isError) {
-                    Text("Mínimo 20 caracteres")
-                } else {
-                    Spacer(modifier = Modifier.width(1.dp)) // Espaciador para mantener el contador a la derecha
-                }
-                Text(
-                    text = "${texto.length}/$maximo",
-                    color = if (isLimitReached) MaterialTheme.colorScheme.error else Color.Unspecified
-                )
-            }
-        }
-    )
-}
-
-@Composable
-fun ResumenResena(general: Double, comentario: String, etiquetas: Set<String>) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("¡Reseña Publicada!", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Calificación general: %.1f".format(general), fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(comentario)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (etiquetas.isNotEmpty()) {
-                Text("Etiquetas seleccionadas:", style = MaterialTheme.typography.labelMedium)
-                Text(etiquetas.joinToString(" • "), style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-    }
-}
 @Preview(showBackground = true)
 @Composable
 fun LecturaScreenPreview() {
-    ResenaScreen()
+    PresupuestoScreen()
 }
