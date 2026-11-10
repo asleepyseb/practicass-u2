@@ -26,22 +26,17 @@ fun MiCard(
             .height(70.dp)
             .border(
                 width = 2.dp,
-                color = Color.Blue,
+                color = Color.Gray,
                 shape = RoundedCornerShape(12.dp)
             )
             .background(
                 color = Color.White,
                 shape = RoundedCornerShape(12.dp)
             ),
-                color = Color.Blue,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-        Text(nombre)
+        Text(text = nombre)
     }
 
     Spacer(modifier = Modifier.padding(5.dp))
 }
-
