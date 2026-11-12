@@ -104,47 +104,7 @@ fun InicioScreen(modifier: Modifier = Modifier) {
     }
 }
 
-@Composable
-fun MiCard(
-    modifier: Modifier = Modifier,
-    nombre: String,
-    onModificar: () -> Unit,
-    onEliminar: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(70.dp)
-            .border(
-                width = 2.dp,
-                color = Color.Gray,
-                shape = RoundedCornerShape(12.dp),
-            )
-            .background(
-                color = Color.White,
-                shape = RoundedCornerShape(12.dp),
-            ),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = nombre)
-            Row {
-                Button(onClick = onModificar) {
-                    Text("Modificar")
-                }
-                Button(onClick = onEliminar) {
-                    Text("Eliminar")
-                }
-            }
-        }
-    }
-}
+
 
 @Preview(showBackground = true)
 @Composable
