@@ -24,12 +24,9 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MiCard(
     modifier: Modifier = Modifier,
-    elemento: ElementoLista,
-    onModificar: () -> Unit,
-    onEliminar: () -> Unit
+    elemento: ElementoLista
 ) {
     val colorFondo = parseColor(elemento.colorString)
-
     val colorTexto = if (colorFondo == Color.Black || colorFondo == Color.Blue || colorFondo == Color.Red) Color.White else Color.Black
 
     Box(
@@ -39,30 +36,15 @@ fun MiCard(
             .border(
                 width = 2.dp,
                 color = Color.Gray,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(12.dp)
             )
             .background(
                 color = colorFondo,
-                shape = RoundedCornerShape(12.dp),
-            ),
-        contentAlignment = Alignment.CenterStart,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = elemento.nombre, color = colorTexto)
-            Row {
-                IconButton(onClick = onModificar) {
-                    Icon(imageVector = Icons.Default.Edit, contentDescription = "Modificar", tint = colorTexto)
-                }
-                IconButton(onClick = onEliminar) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Eliminar", tint = Color.Red)
-                }
-            }
-        }
+        Text(text = elemento.nombre, color = colorTexto)
     }
 }

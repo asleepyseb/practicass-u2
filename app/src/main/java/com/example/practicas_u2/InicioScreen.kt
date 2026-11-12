@@ -112,34 +112,6 @@ fun parseColor(colorString: String): Color {
     }
 }
 
-@Composable
-fun MiCard(
-    modifier: Modifier = Modifier,
-    elemento: ElementoLista
-) {
-    val colorFondo = parseColor(elemento.colorString)
-    val colorTexto = if (colorFondo == Color.Black || colorFondo == Color.Blue || colorFondo == Color.Red) Color.White else Color.Black
-
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(70.dp)
-            .border(
-                width = 2.dp,
-                color = Color.Gray,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .background(
-                color = colorFondo,
-                shape = RoundedCornerShape(12.dp)
-            )
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(text = elemento.nombre, color = colorTexto)
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun InicioScreenPreview() {
