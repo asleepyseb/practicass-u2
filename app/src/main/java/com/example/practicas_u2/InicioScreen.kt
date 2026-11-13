@@ -5,7 +5,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -56,7 +55,7 @@ fun InicioScreen(modifier: Modifier = Modifier) {
                     value = colorEscrito,
                     onValueChange = { colorEscrito = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Color (Ej: Rojo, Azul, rojo, etc.)") }
+                    label = { Text("Color (Ej: Rojo, Azul, etc.)") }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
@@ -98,17 +97,36 @@ fun parseColor(colorString: String): Color {
         "magenta" -> Color.Magenta
         "gris", "gray" -> Color.Gray
         "negro", "black" -> Color.Black
-        else -> {
-            try {
-                if (colorString.startsWith("#")) {
-                    Color(android.graphics.Color.parseColor(colorString))
-                } else {
-                    Color.White
-                }
-            } catch (e: Exception) {
-                Color.White
-            }
+        else -> Color.White
         }
+    }
+}
+
+@Composable
+fun MiCard(
+    modifier: Modifier = Modifier,
+    elemento: ElementoLista
+) {
+    val colorFondo = parseColor(elemento.colorString)
+    val colorTexto = if (colorFondo == Color.Black || colorFondo == Color.Blue || colorFondo == Color.Red) Color.White else Color.Black
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(70.dp)
+            .border(
+                width = 2.dp,
+                color = Color.Gray,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .background(
+                color = colorFondo,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(text = elemento.nombre, color = colorTexto)
     }
 }
 
