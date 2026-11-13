@@ -56,7 +56,7 @@ fun InicioScreen(modifier: Modifier = Modifier) {
                     value = colorEscrito,
                     onValueChange = { colorEscrito = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Color (Ej: Rojo, Azul, etc.)") }
+                    label = { Text("Color (Ej: Rojo, Azul, rojo, etc.)") }
                 )
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
