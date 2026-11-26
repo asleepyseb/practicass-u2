@@ -17,10 +17,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    InicioScreen(
+                    AforoRoute(
                         modifier = Modifier
                             .padding(innerPadding)
-                            .fillMaxSize(),
                     )
                 }
             }
