@@ -17,7 +17,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             Practicasu2Theme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AforoRoute(
+                    LecturaRoute(
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize()
