@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun MiCard(
     modifier: Modifier = Modifier,
+    nombre: String,
     elemento: ElementoLista,
     onModificar: () -> Unit,
     onEliminar: () -> Unit
@@ -54,6 +56,13 @@ fun MiCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            Text(text = nombre)
+            Row {
+                Button(onClick = onModificar) {
+                    Text("Modificar")
+                }
+                Button(onClick = onEliminar) {
+                    Text("Eliminar")
             Text(text = elemento.nombre, color = colorTexto)
             Row {
                 IconButton(onClick = onModificar) {
