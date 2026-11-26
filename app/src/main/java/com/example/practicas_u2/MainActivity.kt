@@ -20,22 +20,10 @@ class MainActivity : ComponentActivity() {
                     AforoRoute(
                         modifier = Modifier
                             .padding(innerPadding)
+                            .fillMaxSize()
                     )
                 }
             }
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

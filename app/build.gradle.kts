@@ -54,4 +54,5 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose")
     implementation("androidx.lifecycle:lifecycle-runtime-compose")
+    implementation("androidx.constraintlayout:constraintlayout-compose:1.1.0")
 }
